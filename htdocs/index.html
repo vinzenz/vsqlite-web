@@ -119,29 +119,66 @@ int main() {
         <section class="card downloads">
           <h3 class="section-title">Install &amp; upgrade</h3>
           <p class="section-lede">
-            Ship directly from source or pull the prebuilt packages and keep your toolchains in sync.
+            Consume vsqlite++ through CMake, C++ package managers, or native Linux packages built
+            from tagged releases.
           </p>
-          <ul>
-            <li>
-              <strong>Source packages:</strong>
-              grab the latest tarball or zip from
-              <a href="https://github.com/vinzenz/vsqlite--/releases">GitHub Releases</a>.
-            </li>
-            <li>
-              <strong>CMake FetchContent:</strong>
-              embed <code>vsqlite::vsqlitepp</code> directly with
+          <div class="install-grid">
+            <article class="install-card">
+              <h4>CMake package</h4>
+              <p>
+                Build and install from source, then use the exported
+                <code>vsqlite::vsqlitepp</code> target from downstream projects.
+              </p>
+<pre><code>cmake -S . -B build -DBUILD_SHARED_LIBS=ON
+cmake --build build
+cmake --install build --prefix /usr/local</code></pre>
+            </article>
+            <article class="install-card">
+              <h4>FetchContent</h4>
+              <p>
+                Embed the project directly. Tests, examples, and install rules default to off when
+                vsqlite++ is used as a subproject.
+              </p>
 <pre><code>FetchContent_Declare(vsqlitepp
   GIT_REPOSITORY https://github.com/vinzenz/vsqlite--
   GIT_TAG v${VSQLITEPP_VERSION})
-set(VSQLITE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(VSQLITE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(vsqlitepp)</code></pre>
-            </li>
-            <li>
-              <strong>CMake:</strong>
-              <code>cmake -S . -B build -DBUILD_SHARED_LIBS=ON -DVSQLITE_BUILD_EXAMPLES=ON</code>.
-            </li>
-          </ul>
+            </article>
+            <article class="install-card">
+              <h4>CPM.cmake</h4>
+              <p>Use CPM.cmake if your project already centralizes CMake dependencies that way.</p>
+<pre><code>CPMAddPackage(
+  NAME vsqlitepp
+  GITHUB_REPOSITORY vinzenz/vsqlite--
+  GIT_TAG v${VSQLITEPP_VERSION})</code></pre>
+            </article>
+            <article class="install-card">
+              <h4>Conan</h4>
+              <p>
+                The repository includes a Conan 2 recipe and package test for validating generated
+                packages.
+              </p>
+<pre><code>conan create . --build=missing \
+  -s compiler.cppstd=20</code></pre>
+            </article>
+            <article class="install-card">
+              <h4>vcpkg overlay</h4>
+              <p>
+                Until vsqlite++ is accepted into the curated registry, use the checked-in overlay
+                port.
+              </p>
+<pre><code>vcpkg install vsqlitepp \
+  --overlay-ports=packaging/vcpkg</code></pre>
+            </article>
+            <article class="install-card">
+              <h4>Release artifacts</h4>
+              <p>
+                Tags matching <code>v*</code> publish source archives, Debian packages, RPM
+                packages, and Arch Linux pacman packages to
+                <a href="https://github.com/vinzenz/vsqlite--/releases">GitHub Releases</a>.
+              </p>
+            </article>
+          </div>
         </section>
 
         <section class="card community">
@@ -167,7 +204,7 @@ FetchContent_MakeAvailable(vsqlitepp)</code></pre>
       </main>
 
       <footer class="footer">
-        &copy; 2006-2024 vsqlite++ contributors. SQLite is a trademark of Hwaci.
+        &copy; 2006-2026 vsqlite++ contributors. SQLite is a trademark of Hwaci.
       </footer>
     </div>
   </body>

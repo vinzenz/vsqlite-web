@@ -371,6 +371,37 @@ pre {
   border-radius: 6px;
 }
 
+.install-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.install-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fcfdff 0%, #f7f9ff 100%);
+  padding: 20px 22px;
+}
+
+.install-card h4 {
+  margin: 0 0 10px;
+  color: var(--accent-dark);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.install-card p {
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+.install-card pre {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
 .footer {
   font-size: 0.9rem;
   color: var(--muted);

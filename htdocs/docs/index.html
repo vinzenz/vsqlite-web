@@ -41,6 +41,45 @@
         </section>
 
         <section class="card">
+          <h3 class="section-title">Packaging &amp; consumption</h3>
+          <p class="section-lede">
+            The project is tested as a library dependency, not only as a top-level checkout. CI
+            validates installed CMake config usage, FetchContent, CPM.cmake, Conan, and the vcpkg
+            overlay port.
+          </p>
+          <div class="grid">
+            <article class="feature">
+              <h3>CMake install tree</h3>
+              <p>
+                Install exports include the <code>vsqlite::vsqlitepp</code> target and package
+                config files for <code>find_package(vsqlitepp CONFIG REQUIRED)</code>.
+              </p>
+            </article>
+            <article class="feature">
+              <h3>FetchContent / CPM</h3>
+              <p>
+                Subproject use keeps examples, tests, and install rules disabled by default while
+                preserving the same link target.
+              </p>
+            </article>
+            <article class="feature">
+              <h3>Conan and vcpkg</h3>
+              <p>
+                Use <code>conanfile.py</code> for Conan 2 packages or
+                <code>packaging/vcpkg</code> as a vcpkg overlay port.
+              </p>
+            </article>
+            <article class="feature">
+              <h3>Native release packages</h3>
+              <p>
+                Release tags publish Debian, RPM, and Arch Linux package artifacts alongside source
+                archives.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="card">
           <h3 class="section-title">Core API</h3>
           <div class="grid">
             <a class="feature feature-link" href="../docs/classes/connection.html"><span>sqlite::connection</span></a>
@@ -135,7 +174,7 @@ std::string sql = "SELECT id FROM docs WHERE " + where + " AND double_text(title
       </main>
 
       <footer class="footer">
-        Documentation for vsqlite++ 0.4.0.
+        Documentation for vsqlite++ 0.4.2.
       </footer>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
