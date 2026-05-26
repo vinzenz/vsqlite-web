@@ -373,7 +373,7 @@ pre {
 
 .install-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -526,6 +526,10 @@ pre {
   .doc-nav {
     position: static;
   }
+
+  .install-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -544,6 +548,10 @@ pre {
   }
 
   .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .install-grid {
     grid-template-columns: 1fr;
   }
 }
