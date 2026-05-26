@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::database_exception | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>database_exception hierarchy</h1>
+          <span>Error types surfaced by vsqlite++</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            All database errors throw <code>std::exception</code> derived types to ensure C++ code
+            can respond appropriately. Each class mirrors a distinct error category: runtime
+            failures, misuse/logic errors, buffer sizing mistakes, and system (errno) failures.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Every exception carries enough metadata (SQL text, SQLite error code, optional
+              <code>errno</code>) to log actionable diagnostics.</li>
+            <li>Runtime vs. logic errors follow the STL policy: user mistakes are
+              <code>std::logic_error</code> derived, environmental issues remain
+              <code>std::runtime_error</code>.</li>
+            <li>Prefer catching the more specific type if you want to branch on
+              <code>error_code()</code> or include the failing SQL statement in metrics.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">try {
+    sqlite::execute cmd{db, "INSERT INTO files(path, blob) VALUES(?, ?)"};
+    cmd % path % blob_span;
+    cmd();
+} catch (sqlite::database_exception_code const & ex) {
+    if (ex.error_code() == SQLITE_CONSTRAINT_UNIQUE) {
+        log::warn(\"Duplicate path {}\", path);
+    } else {
+        throw; // unexpected SQLite state
+    }
+} catch (sqlite::database_system_error const & sys) {
+    throw filesystem_error(sys.error_code(), sys.what());
+}</code></pre>
+          <p>
+            Those exception messages already carry the <code>[SQL: ...]</code> suffix, so logging
+            <code>ex.what()</code> verbatim is usually enough to find the failing statement later.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2>Runtime errors</h2>
+          <table class="reference-table">
+            <tr><th>Type</th><th>Members</th><th>Description</th></tr>
+            <tr>
+              <td><code>struct database_exception : std::runtime_error</code></td>
+              <td><code>explicit database_exception(std::string const&amp; msg)</code></td>
+              <td>Base class for general SQLite failures.</td>
+            </tr>
+            <tr>
+              <td><code>struct database_exception_code : database_exception</code></td>
+              <td>
+                <ul class="list">
+                  <li><code>database_exception_code(std::string const&amp; msg, int sqlite_err, std::string sql = {})</code></li>
+                  <li><code>int error_code() const</code></li>
+                  <li><code>std::string const&amp; sql() const</code></li>
+                </ul>
+              </td>
+              <td>Captures <code>sqlite3_errcode</code> plus the SQL snippet that failed.</td>
+            </tr>
+            <tr>
+              <td><code>std::string append_sql_context(std::string message, std::string const&amp; sql)</code></td>
+              <td><em>Free helper</em></td>
+              <td>Formats <code>"Message [SQL: ...]"</code> strings.</td>
+            </tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Misuse &amp; buffer errors</h2>
+          <table class="reference-table">
+            <tr><th>Type</th><th>Members</th><th>Description</th></tr>
+            <tr>
+              <td><code>struct buffer_too_small_exception : std::runtime_error</code></td>
+              <td><code>explicit buffer_too_small_exception(std::string const&amp; msg)</code></td>
+              <td>Raised when user-provided buffers cannot hold a blob/text column.</td>
+            </tr>
+            <tr>
+              <td><code>struct database_misuse_exception : std::logic_error</code></td>
+              <td><code>explicit database_misuse_exception(std::string const&amp; msg)</code></td>
+              <td>Signals API misuse detected by vsqlite++ (e.g., stale cursor access).</td>
+            </tr>
+            <tr>
+              <td><code>struct database_misuse_exception_code : database_misuse_exception</code></td>
+              <td>
+                <ul class="list">
+                  <li><code>database_misuse_exception_code(std::string const&amp; msg, int sqlite_err, std::string sql = {})</code></li>
+                  <li><code>int error_code() const</code></li>
+                  <li><code>std::string const&amp; sql() const</code></li>
+                </ul>
+              </td>
+              <td>Logic-error equivalent of <code>database_exception_code</code>.</td>
+            </tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>System errors</h2>
+          <table class="reference-table">
+            <tr><th>Type</th><th>Members</th><th>Description</th></tr>
+            <tr>
+              <td><code>struct database_system_error : database_exception</code></td>
+              <td>
+                <ul class="list">
+                  <li><code>database_system_error(std::string const&amp; msg, int errno_value)</code></li>
+                  <li><code>int error_code() const</code></li>
+                </ul>
+              </td>
+              <td>Wraps OS-level failures when interacting with the filesystem adapter.</td>
+            </tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/database_exception.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::serialization | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>Serialization helpers</h1>
+          <span>APIs from <code>sqlite/serialization.hpp</code></span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Thin wrappers around SQLite's optional <code>sqlite3_serialize</code> /
+            <code>sqlite3_deserialize</code> APIs. Guarded by compile-time checks so code can adapt
+            to builds without serialization support.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Great for snapshotting tiny databases in test fixtures—serialize once, deserialize
+              into <code>:memory:</code> for each test.</li>
+            <li>Pair with <a href="connection_pool.html"><code>connection_pool</code></a> to warm up worker connections using the same
+              pre-seeded image.</li>
+            <li>Throw informative <code>database_exception</code> errors when SQLite was compiled
+              without serialization, so you can feature-detect gracefully.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">if (!sqlite::serialization_supported()) {
+    throw std::runtime_error("Ship a build compiled with SQLITE_ENABLE_DESERIALIZE");
+}
+
+auto seed = sqlite::serialize(db, "main");
+
+sqlite::connection mem{":memory:"};
+sqlite::deserialize(mem, seed, "main");
+
+sqlite::query check{mem, "SELECT count(*) FROM settings"};
+std::cout &lt;&lt; check.each().begin()-&gt;get&lt;int&gt;(0) &lt;&lt; '\n';</code></pre>
+          <p>
+            Hydrating read-only lookup data? flip <code>read_only = true</code> so SQLite refuses
+            accidental writes against that schema.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2>API surface</h2>
+          <table class="reference-table">
+            <tr><th>Function</th><th>Description</th></tr>
+            <tr><td><code>constexpr bool serialization_supported() noexcept</code></td><td>Returns <code>true</code> when <code>SQLITE_ENABLE_DESERIALIZE</code> is defined.</td></tr>
+            <tr><td><code>std::vector&lt;unsigned char&gt; serialize(connection&amp; con, std::string_view schema = "main", unsigned int flags = 0)</code></td><td>Dumps an entire schema into a contiguous byte vector.</td></tr>
+            <tr><td><code>void deserialize(connection&amp; con, std::span&lt;const unsigned char&gt; image, std::string_view schema = "main", bool read_only = false)</code></td><td>Replaces the contents of <code>schema</code> with <code>image</code>; optionally marks it read-only.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/serialization.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

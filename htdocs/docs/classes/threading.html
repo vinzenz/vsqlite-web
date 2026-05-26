@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::threading | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>Threading configuration</h1>
+          <span>APIs from <code>sqlite/threading.hpp</code></span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            SQLite must be configured for the desired threading model before any database handles
+            are opened. These helpers provide a type-safe way to do so.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Call <code>configure_threading</code> exactly once during process startup, before
+              any worker threads spawn or connections open.</li>
+            <li>The default build of SQLite is usually <code>serialized</code>; explicitly choosing
+              <code>multi_thread</code> or <code>single_thread</code> can trim mutex overhead in
+              embedded deployments.</li>
+            <li>Stick with <code>serialized</code> when leveraging <a href="connection_pool.html"><code>connection_pool</code></a>—it
+              trades a bit of locking for deadlock-free sharing.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2><code>enum class threading_mode</code></h2>
+          <ul class="list">
+            <li><code>single_thread</code> &mdash; disables SQLite's internal mutexes.</li>
+            <li><code>multi_thread</code> &mdash; allows multiple threads, but each connection is single-threaded.</li>
+            <li><code>serialized</code> &mdash; enables full mutexing so one connection can be shared across threads.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">int main() {
+    if (!sqlite::configure_threading(sqlite::threading_mode::multi_thread)) {
+        throw std::runtime_error("Failed to configure SQLite threading");
+    }
+
+    std::jthread worker([] {
+        sqlite::connection db{":memory:"};
+        // ...
+    });
+}</code></pre>
+          <p>
+            I like to expose <code>current_threading_mode()</code> in a health endpoint so it’s easy
+            to confirm the process bootstrapped SQLite correctly.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2>Functions</h2>
+          <table class="reference-table">
+            <tr><th>Function</th><th>Description</th></tr>
+            <tr><td><code>bool configure_threading(threading_mode mode)</code></td><td>Calls <code>sqlite3_config</code> with the corresponding <code>SQLITE_CONFIG_*</code> flag. Must be invoked before opening any connections.</td></tr>
+            <tr><td><code>threading_mode current_threading_mode()</code></td><td>Returns the last mode supplied to <code>configure_threading</code>.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/threading.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

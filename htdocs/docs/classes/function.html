@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::create_function | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::create_function</h1>
+          <span>Binding C++ callables as SQL functions</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            <a href="function.html"><code>sqlite::create_function</code></a> is the high-level way to expose custom SQL functions
+            without touching the raw SQLite C API. Provide any callable—lambda, functor, free
+            function, or <code>std::function</code>—and the helper takes care of:
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Deducing the C++ parameter/return types and mapping them to SQLite value slots.</li>
+            <li>Owning the callable’s lifetime so SQLite can invoke it across statements safely.</li>
+            <li>Enabling optional flags (deterministic, direct-only, innocuous) through a single
+              <code>function_options</code> struct.</li>
+            <li>Throwing a rich <code>database_exception</code> when registration fails so callers
+              immediately know which function name/arity was rejected.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">sqlite::connection con{":memory:"};
+
+auto normalize = [](std::string_view input) {
+    std::string copy(input);
+    std::ranges::transform(copy, copy.begin(),
+        [](unsigned char c) { return std::tolower(c); });
+    return copy;
+};
+
+sqlite::create_function(
+    con,
+    "normalize_text",
+    normalize,
+    {.deterministic = true}
+);
+
+sqlite::query q{con, "SELECT normalize_text(?)"};
+q % "Déjà Vu";
+std::cout &lt;&lt; q.begin()-&gt;get&lt;std::string&gt;(0);</code></pre>
+          <p>
+            vsqlite++ stores your callable inside SQLite’s user-data slot, so lambdas with captures
+            are fine—the wrapper makes sure the destructor runs when the function is removed.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2><code>struct function_options</code></h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>int arity = -1</code></td><td>Override the callable's arity when the signature should be hidden. Defaults to the deduced number of parameters.</td></tr>
+            <tr><td><code>int text_representation = SQLITE_UTF8</code></td><td>Encoding flag passed to SQLite.</td></tr>
+            <tr><td><code>bool deterministic = false</code></td><td>Marks the function <code>SQLITE_DETERMINISTIC</code> when supported.</td></tr>
+            <tr><td><code>bool direct_only = false</code></td><td>Opt in to <code>SQLITE_DIRECTONLY</code>.</td></tr>
+            <tr><td><code>bool innocuous = false</code></td><td>Opt in to <code>SQLITE_INNOCUOUS</code>.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Registration</h2>
+          <table class="reference-table">
+            <tr><th>Signature</th><th>Description</th></tr>
+            <tr>
+              <td><code>template&lt;typename Callable&gt; void create_function(connection&amp; con, std::string_view name, Callable&amp;&amp; callable, function_options opts = {})</code></td>
+              <td>
+                <ul class="list">
+                  <li>Checks that <code>opts.arity</code> matches the callable (unless negative).</li>
+                  <li>Composes the text-representation bitmask (UTF-8 plus deterministic/direct/innocuous when available).</li>
+                  <li>Registers the function and throws <code>database_exception_code</code> on failure.</li>
+                  <li>Supports void-returning functions (SQLite receives NULL) and value-returning functions (converted via built-in result writers).</li>
+                </ul>
+              </td>
+            </tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/function.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

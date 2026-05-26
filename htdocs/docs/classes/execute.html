@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::execute | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::execute</h1>
+          <span>Convenience wrapper for non-SELECT statements</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            <a href="execute.html"><code>sqlite::execute</code></a> inherits from <a href="command.html"><code>sqlite::command</code></a> but offers a
+            simplified constructor that optionally executes immediately. Use it for DDL and DML
+            statements when you do not need to iterate over result rows.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Ideal for one-shot schema migrations—set <code>immediately = true</code> so the SQL
+              runs as soon as the object is constructed.</li>
+            <li>Rebind and call <code>operator()</code> as many times as needed; under the hood it
+              reuses the prepared statement stored in the connection’s statement cache.</li>
+            <li>Returns <code>true</code> from <code>step_once()</code> only when SQLite reports
+              <code>SQLITE_ROW</code>, which usually indicates a trigger produced output.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">sqlite::execute migrate{
+    db,
+    R\"SQL(
+        CREATE TABLE IF NOT EXISTS users(
+            id INTEGER PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE,
+            created_at INTEGER NOT NULL
+        )
+    )SQL\",
+    true // run immediately
+};
+
+sqlite::execute insert{db, "INSERT INTO users(email, created_at) VALUES(?, ?)"};
+insert % "dev@example.com" % sqlite::clock::now();
+insert();</code></pre>
+          <p>
+            Nothing fancy happens here—<code>execute</code> literally inherits <code>command</code>,
+            so all the binding helpers and error handling behave exactly the same.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2>Public API</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr>
+              <td><code>execute(connection&amp; con, std::string const&amp; sql, bool immediately = false)</code></td>
+              <td>Prepares <code>sql</code> and, if <code>immediately</code> is true, runs <code>step_once()</code> inside the constructor.</td>
+            </tr>
+            <tr>
+              <td><code>~execute()</code></td>
+              <td>Inherits <code>command</code>'s destructor to finalize the statement.</td>
+            </tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/execute.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

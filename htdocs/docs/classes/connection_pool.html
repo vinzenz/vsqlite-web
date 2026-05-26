@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::connection_pool | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::connection_pool</h1>
+          <span>Thread-safe connection reuse</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Provides a bounded set of shared <a href="connection.html"><code>sqlite::connection</code></a> instances guarded by a
+            mutex and condition variable. Callers acquire a scoped <code>lease</code>; when that
+            lease is destroyed, the connection returns to the pool.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Ensures you never exceed a fixed number of open database handles—great for shared
+              hosting quotas or when you want predictable WAL checkpoint behavior.</li>
+            <li>Separates connection creation logic through <code>connection_factory</code>, so your
+              pool knows how to rebuild connections after transient failures.</li>
+            <li>Makes it obvious when work blocks; <code>acquire()</code> waits on a condition
+              variable, so thread dumps show exactly who is starved.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">sqlite::connection_pool pool{
+    4,
+    sqlite::connection_pool::make_factory("/srv/app.db",
+        sqlite::open_mode::open_existing)
+};
+
+auto worker = [&]() {
+    auto conn = pool.acquire();        // blocks if all 4 are busy
+    sqlite::query q{*conn, "SELECT count(*) FROM jobs WHERE status = ?" };
+    q % "pending";
+    for (auto const & row : q.each()) {
+        std::cout &lt;&lt; row.get&lt;int&gt;(0) &lt;&lt; '\n';
+    }
+};</code></pre>
+          <p>
+            Prefer non-blocking calls? wrap <code>acquire()</code> in your own optional-and-timeout
+            helper—the pool intentionally keeps the core API blocking and simple.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2><code>connection_pool::lease</code></h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>lease()</code></td><td>Creates an empty handle.</td></tr>
+            <tr><td><code>lease(connection_pool*, std::shared_ptr&lt;connection&gt;)</code></td><td>Internal constructor used by the pool.</td></tr>
+            <tr><td><code>lease(lease&amp;&amp;) noexcept</code>, <code>lease&amp; operator=(lease&amp;&amp;) noexcept</code></td><td>Transfers ownership of the leased connection.</td></tr>
+            <tr><td><code>lease(lease const&amp;)=delete</code>, <code>lease&amp; operator=(lease const&amp;)=delete</code></td><td>Copying would duplicate ownership, so it is disabled.</td></tr>
+            <tr><td><code>~lease()</code></td><td>Returns the connection to the originating pool.</td></tr>
+            <tr><td><code>connection&amp; operator*() const</code></td><td>Dereferences to the underlying connection.</td></tr>
+            <tr><td><code>connection* operator-&gt;() const</code></td><td>Arrow operator for convenience.</td></tr>
+            <tr><td><code>std::shared_ptr&lt;connection&gt; shared() const</code></td><td>Returns the owning shared pointer when needed.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Pool API</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>using connection_factory = std::function&lt;std::shared_ptr&lt;connection&gt;()&gt;</code></td><td>Type alias for user-supplied factory callables.</td></tr>
+            <tr><td><code>connection_pool(std::size_t capacity, connection_factory factory)</code></td><td>Creates a pool that lazily builds up to <code>capacity</code> connections via <code>factory</code>.</td></tr>
+            <tr><td><code>static connection_factory make_factory(std::string db, open_mode mode = open_mode::open_or_create, filesystem_adapter_ptr fs = {})</code></td><td>Utility for capturing open parameters without writing lambdas.</td></tr>
+            <tr><td><code>lease acquire()</code></td><td>Blocks until a connection is available, then returns a lease.</td></tr>
+            <tr><td><code>std::size_t capacity() const</code></td><td>Max number of connections the pool may create.</td></tr>
+            <tr><td><code>std::size_t idle_count() const</code></td><td>Number of connections currently sitting unused in the pool.</td></tr>
+            <tr><td><code>std::size_t created_count() const</code></td><td>Total connections created since construction.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/connection_pool.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

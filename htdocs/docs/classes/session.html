@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::session | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::session</h1>
+          <span>Changeset and patchset capture</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Wraps <code>sqlite3_session</code> when SQLite is compiled with
+            <code>SQLITE_ENABLE_SESSION</code>. Sessions record row-level changes so they can be
+            applied elsewhere via changesets or patchsets.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Perfect for synchronization pipelines—capture edits locally, ship the blob, and
+              replay it on a remote connection.</li>
+            <li>Patchsets are smaller but lossy (no “prior values”). Changesets keep enough context
+              to resolve conflicts; pick the format that matches your workflow.</li>
+            <li>Use <code>set_indirect(true)</code> when re-applying incoming changes so they do not
+              loop back into the session you are recording for outbound sync.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>session_options</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>bool indirect = false</code></td><td>Marks tracked changes as indirect so filters can ignore them.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">if (!sqlite::sessions_supported()) {
+    return;
+}
+
+sqlite::session sess{db};
+sess.attach_all();
+
+sqlite::transaction tx{db};
+apply_business_updates();
+tx.commit();
+
+auto payload = sess.changeset();
+
+sqlite::apply_changeset(replica, payload);</code></pre>
+          <p>
+            When you replay incoming blobs, tap <code>sqlite3changeset_start_v2</code> via
+            <code>native_handle()</code> if you need to plug in custom conflict resolution.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2>session</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>session(connection&amp;, std::string_view schema = "main", session_options opts = {})</code></td><td>Constructs a session associated with <code>schema</code>.</td></tr>
+            <tr><td><code>~session()</code></td><td>Closes the underlying <code>sqlite3_session*</code>.</td></tr>
+            <tr><td><code>session(session&amp;&amp;) noexcept</code>, <code>session&amp; operator=(session&amp;&amp;) noexcept</code></td><td>Transfer ownership.</td></tr>
+            <tr><td><code>session(session const&amp;)=delete</code>, <code>session&amp; operator=(session const&amp;)=delete</code></td><td>Non-copyable.</td></tr>
+            <tr><td><code>void attach(std::string_view table)</code></td><td>Track changes for a specific table.</td></tr>
+            <tr><td><code>void attach_all()</code></td><td>Track changes for every table in the schema.</td></tr>
+            <tr><td><code>void enable(bool value)</code></td><td>Enable or disable capturing.</td></tr>
+            <tr><td><code>void set_indirect(bool value)</code></td><td>Marks subsequent changes as indirect.</td></tr>
+            <tr><td><code>std::vector&lt;unsigned char&gt; changeset()</code></td><td>Serializes accumulated changes in the standard changeset format.</td></tr>
+            <tr><td><code>std::vector&lt;unsigned char&gt; patchset()</code></td><td>Serializes in the smaller patchset format.</td></tr>
+            <tr><td><code>void* native_handle() const noexcept</code></td><td>Returns the raw <code>sqlite3_session*</code>.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Free helpers</h2>
+          <table class="reference-table">
+            <tr><th>Function</th><th>Description</th></tr>
+            <tr><td><code>constexpr bool sessions_supported() noexcept</code></td><td>Indicates whether session APIs are enabled.</td></tr>
+            <tr><td><code>void apply_changeset(connection&amp;, std::span&lt;const unsigned char&gt; data)</code></td><td>Applies a captured changeset to a connection.</td></tr>
+            <tr><td><code>void apply_patchset(connection&amp;, std::span&lt;const unsigned char&gt; data)</code></td><td>Applies a patchset.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/session.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

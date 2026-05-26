@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Reference | vsqlite++</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Linked reference for every public vsqlite++ class generated from the current repository."
+    >
+    <link rel="stylesheet" href="../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>vsqlite++ Documentation</h1>
+          <span>One page per class, straight from this codebase</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../">Overview</a>
+          <a class="active" href="../docs/">Documentation</a>
+          <a href="../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="card hero">
+          <h2>How to use this reference</h2>
+          <p>
+            The following index links to per-class hdoc-style pages. Each page documents every
+            constructor, method, constant, and public data member that appears in the corresponding
+            header under <code>include/sqlite/</code>.
+          </p>
+          <p>
+            Because these files are checked into this repository, new classes automatically pick up
+            a page the next time you regenerate the site.
+          </p>
+        </section>
+
+        <section class="card">
+          <h3 class="section-title">Core API</h3>
+          <div class="grid">
+            <a class="feature feature-link" href="../docs/classes/connection.html"><span>sqlite::connection</span></a>
+            <a class="feature feature-link" href="../docs/classes/command.html"><span>sqlite::command</span></a>
+            <a class="feature feature-link" href="../docs/classes/query.html"><span>sqlite::query</span></a>
+            <a class="feature feature-link" href="../docs/classes/result.html"><span>sqlite::result</span></a>
+            <a class="feature feature-link" href="../docs/classes/transaction.html"><span>sqlite::transaction</span></a>
+            <a class="feature feature-link" href="../docs/classes/savepoint.html"><span>sqlite::savepoint</span></a>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 class="section-title">Concurrency &amp; pooling</h3>
+          <div class="grid">
+            <a class="feature feature-link" href="../docs/classes/threading.html"><span>sqlite::threading</span></a>
+            <a class="feature feature-link" href="../docs/classes/connection_pool.html"><span>sqlite::connection_pool</span></a>
+            <a class="feature feature-link" href="../docs/classes/statement_cache.html"><span>sqlite::statement_cache</span></a>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 class="section-title">Extensions &amp; utilities</h3>
+          <div class="grid">
+            <a class="feature feature-link" href="../docs/classes/json_fts.html"><span>sqlite::json / sqlite::fts</span></a>
+            <a class="feature feature-link" href="../docs/classes/function.html"><span>sqlite::create_function</span></a>
+            <a class="feature feature-link" href="../docs/classes/serialization.html"><span>sqlite::serialization</span></a>
+            <a class="feature feature-link" href="../docs/classes/session.html"><span>sqlite::session</span></a>
+            <a class="feature feature-link" href="../docs/classes/snapshot.html"><span>sqlite::snapshot</span></a>
+            <a class="feature feature-link" href="../docs/classes/filesystem_adapter.html"><span>sqlite::filesystem_adapter</span></a>
+            <a class="feature feature-link" href="../docs/classes/backup.html"><span>sqlite::backup</span></a>
+            <a class="feature feature-link" href="../docs/classes/execute.html"><span>sqlite::execute</span></a>
+            <a class="feature feature-link" href="../docs/classes/view.html"><span>sqlite::view</span></a>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 class="section-title">Error handling</h3>
+          <div class="grid">
+            <a class="feature feature-link" href="../docs/classes/database_exception.html"><span>sqlite::database_exception hierarchy</span></a>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 class="section-title">Usage examples</h3>
+          <div class="usage-block">
+            <h4>Connections, commands, results</h4>
+<pre><code class="language-cpp">#include &lt;sqlite/connection.hpp&gt;
+#include &lt;sqlite/execute.hpp&gt;
+#include &lt;sqlite/query.hpp&gt;
+#include &lt;iostream&gt;
+
+sqlite::connection db("notes.db");
+sqlite::execute(db, "CREATE TABLE IF NOT EXISTS notes(id INTEGER PRIMARY KEY, text TEXT);", true);
+
+sqlite::execute insert(db, "INSERT INTO notes(text) VALUES(?);");
+insert % "Hello";
+insert();
+
+sqlite::query q(db, "SELECT id, text FROM notes;");
+for(auto &amp; row : q.each()) {
+    std::cout &lt;&lt; '[' &lt;&lt; row.get<int>(0) &lt;&lt; "] "
+              &lt;&lt; row.get<std::string_view>(1) &lt;&lt; '\n';
+}</code></pre>
+            <p>Demonstrates the <span class="feature-name">connection</span>, <span class="feature-name">command</span>, <span class="feature-name">execute</span>, <span class="feature-name">query</span>, and <span class="feature-name">result</span> pages above.</p>
+          </div>
+          <div class="usage-block">
+            <h4>Pooling &amp; threads</h4>
+<pre><code class="language-cpp">auto factory = sqlite::connection_pool::make_factory("jobs.db");
+sqlite::connection_pool pool(4, factory);
+
+auto worker = [&] {
+    auto lease = pool.acquire();
+    sqlite::execute(*lease, "INSERT INTO jobs(status) VALUES('done');");
+};
+
+std::thread t1(worker), t2(worker);
+t1.join(); t2.join();</code></pre>
+            <p>Relies on <span class="feature-name">threading</span> (configure before creating pools) and <span class="feature-name">connection_pool</span>.</p>
+          </div>
+          <div class="usage-block">
+            <h4>JSON helpers &amp; custom SQL functions</h4>
+<pre><code class="language-cpp">sqlite::json::register_contains_function(db);
+sqlite::create_function(db, "double_text",
+    [](std::string_view s) { return std::string(s) + s; },
+    {.deterministic = true});
+
+auto where = sqlite::json::contains_expression("payload", sqlite::json::path().key("tags"), "?");
+std::string sql = "SELECT id FROM docs WHERE " + where + " AND double_text(title) = ?;";</code></pre>
+            <p>Pulls together <span class="feature-name">json_fts</span> and <span class="feature-name">function</span>.</p>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

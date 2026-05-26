@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::backup | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::backup</h1>
+          <span>Incremental backup wrapper</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Represents an in-flight SQLite incremental backup. The object owns the
+            <code>sqlite3_backup*</code> handle and automatically finalizes it when destroyed, so
+            backups complete even if exceptions propagate.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Ideal for online backups—run it while the source stays writable and copy a fixed
+              number of pages per loop to reduce I/O spikes.</li>
+            <li>Accepts separate <a href="connection.html"><code>sqlite::connection</code></a> instances, so you can back up from
+              a live file to an in-memory connection (or vice versa).</li>
+            <li>Throws <a href="database_exception.html"><code>sqlite::database_exception</code></a> when SQLite reports an error; no need to
+              handle <code>sqlite3_backup_step</code> return codes manually.</li>
+            <li>Pairs well with <a href="snapshot.html"><code>sqlite::snapshot</code></a> or <a href="transaction.html"><code>sqlite::transaction</code></a> when you need to
+              guarantee a consistent read view.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">sqlite::connection live{"/srv/data/live.db"};
+sqlite::connection staging{"/srv/data/staging.db",
+                           sqlite::open_mode::always_create};
+
+sqlite::backup copier{staging, live};
+while (copier.step(256)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
+copier.finish();</code></pre>
+          <p>
+            Copying in batches like this gives the writer breathing room; if you truly need “copy
+            everything now”, call <code>step(-1)</code> once.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2>Public API</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr>
+              <td><code>backup(connection&amp; dst, connection&amp; src)</code></td>
+              <td>Begins copying pages from the source connection to the destination connection.</td>
+            </tr>
+            <tr>
+              <td><code>backup(backup const&amp;)=delete</code>, <code>backup&amp; operator=(backup const&amp;)=delete</code></td>
+              <td>Backups are non-copyable because they own a unique SQLite handle.</td>
+            </tr>
+            <tr>
+              <td><code>~backup()</code></td>
+              <td>Finishes the backup automatically if the caller did not explicitly call <code>finish()</code>.</td>
+            </tr>
+            <tr>
+              <td><code>bool step(int nPage = -1)</code></td>
+              <td>Copies up to <code>nPage</code> pages; pass a negative value to copy every remaining page. Returns <code>true</code> while work remains.</td>
+            </tr>
+            <tr>
+              <td><code>void finish()</code></td>
+              <td>Finalizes the backup immediately. After calling this method, the object becomes inert.</td>
+            </tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/backup.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

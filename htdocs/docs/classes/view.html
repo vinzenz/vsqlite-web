@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::view | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::view</h1>
+          <span>CREATE VIEW / DROP VIEW helper</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Simplifies working with SQL views on a connection by composing the appropriate CREATE
+            and DROP statements, including optional database qualifiers and temporary views.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Encapsulates quoting rules so developers can treat view names as plain strings.</li>
+            <li>Supports temporary views, making it easy to stage pipeline-friendly projections
+              during ETL steps.</li>
+            <li>Pairs well with migrations: wrap view creation/deletion in transactions for atomic
+              schema updates.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Public API</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>view(connection&amp; con)</code></td><td>Binds the helper to a connection.</td></tr>
+            <tr><td><code>~view()</code></td><td>Destructor; no special behavior.</td></tr>
+            <tr><td><code>void create(bool temporary, std::string const&amp; alias, std::string const&amp; sql_query)</code></td><td>Creates a view in the default schema.</td></tr>
+            <tr><td><code>void create(bool temporary, std::string const&amp; database, std::string const&amp; alias, std::string const&amp; sql_query)</code></td><td>Creates a view within a named database (e.g., <code>temp</code> or an attached DB).</td></tr>
+            <tr><td><code>void drop(std::string const&amp; alias)</code></td><td>Drops a view by name in the default schema.</td></tr>
+            <tr><td><code>void drop(std::string const&amp; database, std::string const&amp; alias)</code></td><td>Drops a view within the specified database.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">sqlite::view v{db};
+
+v.create(false, "active_orders", R\"SQL(
+    SELECT o.id, o.customer_id, o.total
+    FROM orders o
+    WHERE o.state = 'active'
+)SQL\");
+
+// Later...
+v.drop("active_orders");</code></pre>
+          <p>
+            Need a view inside an attached database? just pass the database name:
+            <code>v.create(true, "analytics", "recent_events", ...);</code>
+          </p>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/view.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

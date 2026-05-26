@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::snapshot | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::snapshot</h1>
+          <span>WAL snapshot &amp; journal helpers</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Wraps the optional <code>sqlite3_snapshot*</code> API to capture consistent read views of
+            WAL databases and to manage journal modes programmatically.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Guarantees long-running readers never block writers—pin a snapshot and finish work
+              at your own pace.</li>
+            <li>Explicitly flip between WAL and rollback journal modes during integration tests to
+              mimic production settings.</li>
+            <li>Feature-detect snapshots at runtime; older system SQLite builds may not include the
+              extension.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2><code>enum class wal_mode</code></h2>
+          <ul class="list">
+            <li><code>rollback</code>, <code>truncate</code>, <code>persist</code>, <code>memory</code>, <code>wal</code>, <code>wal2</code></li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">if (!sqlite::snapshots_supported()) {
+    return;
+}
+
+sqlite::enable_wal(db);
+
+auto snap = sqlite::snapshot::take(db);
+sqlite::transaction reader{db};
+snap.open(db); // pin read view
+
+sqlite::query q{db, "SELECT * FROM ledger ORDER BY created_at"};
+for (auto &amp; row : q.each()) {
+    consume(row);
+}
+
+reader.end(); // releasing the snapshot allows checkpoints again</code></pre>
+          <p>
+            I often grab a <a href="savepoint.html"><code>savepoint</code></a> and a snapshot at the
+            same time—if the check fails I roll back to the savepoint and reopen the exact same read
+            view.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2><code>struct snapshot</code></h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>snapshot()</code></td><td>Creates an empty snapshot handle.</td></tr>
+            <tr><td><code>snapshot(snapshot const&amp;)=delete</code>, <code>snapshot&amp; operator=(snapshot const&amp;)=delete</code></td><td>Snapshots cannot be copied.</td></tr>
+            <tr><td><code>snapshot(snapshot&amp;&amp;) noexcept</code>, <code>snapshot&amp; operator=(snapshot&amp;&amp;) noexcept</code></td><td>Transfer ownership of the underlying <code>sqlite3_snapshot*</code>.</td></tr>
+            <tr><td><code>~snapshot()</code></td><td>Releases the snapshot if held.</td></tr>
+            <tr><td><code>bool valid() const</code>, <code>explicit operator bool() const</code></td><td>Checks whether a snapshot is currently owned.</td></tr>
+            <tr><td><code>void reset() noexcept</code></td><td>Releases ownership.</td></tr>
+            <tr><td><code>static snapshot take(connection&amp;, std::string_view schema = "main")</code></td><td>Captures a snapshot for <code>schema</code>.</td></tr>
+            <tr><td><code>void open(connection&amp;, std::string_view schema = "main") const</code></td><td>Moves the connection's read transaction back to the captured snapshot.</td></tr>
+            <tr><td><code>sqlite3_snapshot* native_handle() const noexcept</code></td><td>Exposes the raw pointer for advanced use cases.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Journal helpers</h2>
+          <table class="reference-table">
+            <tr><th>Function</th><th>Description</th></tr>
+            <tr><td><code>wal_mode set_wal_mode(connection&amp;, wal_mode mode)</code></td><td>Forces a specific PRAGMA journal_mode.</td></tr>
+            <tr><td><code>wal_mode enable_wal(connection&amp;, bool prefer_wal2 = false)</code></td><td>Turns on WAL (or WAL2 when supported).</td></tr>
+            <tr><td><code>wal_mode get_wal_mode(connection&amp;)</code></td><td>Returns the current journal mode.</td></tr>
+            <tr><td><code>std::string_view to_string(wal_mode)</code></td><td>Converts an enum value to its PRAGMA string.</td></tr>
+            <tr><td><code>constexpr bool snapshots_supported() noexcept</code></td><td>Indicates whether <code>SQLITE_ENABLE_SNAPSHOT</code> is available.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/snapshot.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

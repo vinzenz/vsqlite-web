@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::savepoint | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::savepoint</h1>
+          <span>Scoped SAVEPOINT helper</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Creates a named SAVEPOINT on a connection and releases or rolls it back automatically.
+            It also integrates with <a href="snapshot.html"><code>sqlite::snapshot</code></a> so callers can capture and re-open
+            snapshots inside nested transactions.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Acts like a “mini transaction” that can be nested under a parent
+              <a href="transaction.html"><code>sqlite::transaction</code></a>.</li>
+            <li>Great for retrying a chunk of work inside long-running migrations—rollback on the
+              savepoint without aborting the entire outer transaction.</li>
+            <li>Expose the current name via <code>getName()</code> so you can correlate logs with
+              the SQL emitted inside the guarded scope.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">sqlite::transaction outer{db};
+sqlite::savepoint block{db, "apply_patch"};
+
+try {
+    run_patch(block.getName());
+    block.release(); // optional; destructor releases automatically
+    outer.commit();
+} catch (...) {
+    block.rollback(); // rewinds partial changes
+    throw;
+}</code></pre>
+          <p>
+            Pair a savepoint with a <a href="snapshot.html"><code>snapshot</code></a> when you need a
+            consistent view before touching the data; it keeps long migrations from surprising the
+            writers.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2>Public API</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>savepoint(connection&amp; con, std::string const&amp; name)</code></td><td>Issues <code>SAVEPOINT name</code>.</td></tr>
+            <tr><td><code>~savepoint()</code></td><td>Automatically releases the savepoint if still active.</td></tr>
+            <tr><td><code>void release()</code></td><td>Runs <code>RELEASE SAVEPOINT</code> manually.</td></tr>
+            <tr><td><code>void rollback()</code></td><td>Runs <code>ROLLBACK TO SAVEPOINT</code>.</td></tr>
+            <tr><td><code>bool isActive() const</code></td><td>Returns whether the savepoint has not yet been released/rolled back.</td></tr>
+            <tr><td><code>std::string getName() const</code></td><td>Returns the alias provided at construction.</td></tr>
+            <tr><td><code>snapshot take_snapshot(std::string_view schema = "main")</code></td><td>Captures a WAL snapshot inside the savepoint.</td></tr>
+            <tr><td><code>void open_snapshot(snapshot const&amp; snap, std::string_view schema = "main")</code></td><td>Rewinds the connection's read transaction to <code>snap</code>.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/savepoint.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

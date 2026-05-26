@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::transaction | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::transaction</h1>
+          <span>BEGIN/COMMIT/ROLLBACK guard</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Manages explicit transactions using RAII. Transactions can be started with different
+            locking modes, and support capturing/re-opening WAL snapshots similar to
+            <a href="savepoint.html"><code>sqlite::savepoint</code></a>.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Constructor starts the transaction immediately to minimize the “opened but unused”
+              window; call <code>begin()</code> manually if you need deferred start.</li>
+            <li>Destructor rolls back automatically, making it safe to throw exceptions anywhere in
+              the guarded scope.</li>
+            <li>Combines nicely with <code>savepoint</code> for chunked work and with
+              <code>snapshot</code> for deterministic reads in WAL mode.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2><code>enum class transaction_type</code></h2>
+          <ul class="list">
+            <li><code>undefined</code> &mdash; defers to SQLite's default (deferred).</li>
+            <li><code>deferred</code></li>
+            <li><code>immediate</code></li>
+            <li><code>exclusive</code></li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">void persist(std::span&lt;event&gt; events) {
+    sqlite::transaction tx{db, sqlite::transaction_type::immediate};
+    sqlite::execute insert{db, "INSERT INTO events VALUES(?, ?, ?)"};
+    for (auto const & e : events) {
+        insert % e.id % e.type % e.payload;
+        insert();
+    }
+    tx.commit();
+}</code></pre>
+          <p>
+            Need repeatable reads? grab a snapshot inside the transaction with
+            <code>tx.take_snapshot()</code> and call <code>tx.open_snapshot(snap)</code> whenever you
+            have to re-run the validation step.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2>Public API</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>transaction(connection&amp; con, transaction_type type = transaction_type::undefined)</code></td><td>Begins a transaction immediately.</td></tr>
+            <tr><td><code>~transaction()</code></td><td>Rolls back automatically if <code>end()</code> or <code>commit()</code> was not called.</td></tr>
+            <tr><td><code>void begin(transaction_type type = transaction_type::undefined)</code></td><td>Starts a new transaction if one is not already active.</td></tr>
+            <tr><td><code>void end()</code></td><td>Ends the current transaction by committing; alias for <code>commit()</code>.</td></tr>
+            <tr><td><code>void commit()</code></td><td>Commits changes.</td></tr>
+            <tr><td><code>void rollback()</code></td><td>Rolls back changes.</td></tr>
+            <tr><td><code>bool isActive() const</code></td><td>Indicates whether the transaction is currently open.</td></tr>
+            <tr><td><code>snapshot take_snapshot(std::string_view schema = "main")</code></td><td>Captures a WAL snapshot during the transaction.</td></tr>
+            <tr><td><code>void open_snapshot(snapshot const&amp;, std::string_view schema = "main")</code></td><td>Reverts to the supplied snapshot.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/transaction.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

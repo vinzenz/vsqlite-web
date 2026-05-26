@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>vsqlite++ | Modern SQLite C++ Wrapper</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="vsqlite++ is a modern, header-first C++ wrapper that brings RAII, connection pools, JSON helpers, and FTS utilities to SQLite."
+    >
+    <link rel="stylesheet" href="./static/style.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>vsqlite++</h1>
+          <span>C++20 RAII wrapper for SQLite</span>
+        </div>
+        <nav class="site-nav">
+          <a class="active" href="./">Overview</a>
+          <a href="./docs/">Documentation</a>
+          <a href="./community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="card hero">
+          <div class="hero-content">
+            <span class="eyebrow">Battle-tested since 2006</span>
+            <h2>SQLite, the modern C++ way.</h2>
+            <p>
+              vsqlite++ wraps the SQLite C API with exception-safe RAII objects, connection pooling,
+              JSON &amp; FTS helpers, and batteries-included utilities so you can focus on your data.
+            </p>
+            <div class="cta-group">
+              <a class="btn primary" href="https://github.com/vinzenz/vsqlite--/releases">
+                Download from GitHub Releases
+              </a>
+              <a class="btn secondary" href="./docs/">
+                Browse built-in docs
+              </a>
+            </div>
+          </div>
+          <div class="hero-meta">
+            <div class="stat">
+              <span class="stat-value">C++20</span>
+              <span class="stat-label">Toolchain standard</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">RAII</span>
+              <span class="stat-label">Connections &amp; transactions</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">FTS · JSON</span>
+              <span class="stat-label">Helpers included</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">Custom UDFs</span>
+              <span class="stat-label">Functions, Methods, Lambdas</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">Statement Cache</span>
+              <span class="stat-label">For faster execution</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 class="section-title">What you get</h3>
+          <p class="section-lede">
+            Whether you are shipping an embedded appliance or orchestrating microservices,
+            vsqlite++ keeps your data layer tidy with expressive, zero-footgun primitives.
+          </p>
+          <div class="grid">
+            <article class="feature">
+              <h3>RAII-first design</h3>
+              <p>Connections, transactions, savepoints, and results automatically clean up.</p>
+            </article>
+            <article class="feature">
+              <h3>Thread-aware pooling</h3>
+              <p>Use the built-in connection pool to safely multiplex SQLite handles across tasks.</p>
+            </article>
+            <article class="feature">
+              <h3>Extension helpers</h3>
+              <p>JSON path builders, FTS match/rank helpers, snapshot &amp; session utilities.</p>
+            </article>
+            <article class="feature">
+              <h3>Modern toolchain</h3>
+              <p>C++20 + CMake</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="card code-sample">
+          <h3 class="section-title">Five-minute tour</h3>
+<pre><code>#include &lt;sqlite/connection.hpp&gt;
+#include &lt;sqlite/execute.hpp&gt;
+#include &lt;sqlite/query.hpp&gt;
+#include &lt;iostream&gt;
+
+int main() {
+    sqlite::connection db("demo.db");
+    sqlite::execute(db, "CREATE TABLE IF NOT EXISTS notes(id INTEGER PRIMARY KEY, text TEXT);", true);
+
+    sqlite::execute insert(db, "INSERT INTO notes(text) VALUES(?);");
+    insert % "Hello from vsqlite++";
+    insert();
+
+    sqlite::query rows(db, "SELECT id, text FROM notes ORDER BY id DESC;");
+    for(auto &amp; row : rows.each()) {
+        std::cout &lt;&lt; '[' &lt;&lt; row.get<int>(0) &lt;&lt; "] "
+                  &lt;&lt; row.get<std::string_view>(1) &lt;&lt; '\n';
+    }
+}</code></pre>
+        </section>
+
+        <section class="card downloads">
+          <h3 class="section-title">Install &amp; upgrade</h3>
+          <p class="section-lede">
+            Ship directly from source or pull the prebuilt packages and keep your toolchains in sync.
+          </p>
+          <ul>
+            <li>
+              <strong>Source packages:</strong>
+              grab the latest tarball or zip from
+              <a href="https://github.com/vinzenz/vsqlite--/releases">GitHub Releases</a>.
+            </li>
+            <li>
+              <strong>CMake FetchContent:</strong>
+              embed <code>vsqlite::vsqlitepp</code> directly with
+<pre><code>FetchContent_Declare(vsqlitepp
+  GIT_REPOSITORY https://github.com/vinzenz/vsqlite--
+  GIT_TAG v${VSQLITEPP_VERSION})
+set(VSQLITE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(VSQLITE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(vsqlitepp)</code></pre>
+            </li>
+            <li>
+              <strong>CMake:</strong>
+              <code>cmake -S . -B build -DBUILD_SHARED_LIBS=ON -DVSQLITE_BUILD_EXAMPLES=ON</code>.
+            </li>
+          </ul>
+        </section>
+
+        <section class="card community">
+          <h3 class="section-title">Stay in the loop</h3>
+          <p class="section-lede">
+            Join the maintainers, contributors, and teams building on top of vsqlite++.
+          </p>
+          <ul>
+            <li>
+              File issues, discuss features, or browse past releases on
+              <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>.
+            </li>
+            <li>
+              Join the conversation in
+              <a href="./community/">our community hub</a> for support, chat, and contribution tips.
+            </li>
+            <li>
+              Want to announce a project using vsqlite++?
+              <a href="https://github.com/vinzenz/vsqlite--/discussions">Share it in Discussions</a>.
+            </li>
+          </ul>
+        </section>
+      </main>
+
+      <footer class="footer">
+        &copy; 2006-2024 vsqlite++ contributors. SQLite is a trademark of Hwaci.
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::json / sqlite::fts | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>JSON &amp; FTS helpers</h1>
+          <span>Utilities from <code>sqlite/json_fts.hpp</code></span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Provides high-level helpers for SQLite's JSON1 and FTS5 extensions: compose JSON paths,
+            build SQL snippets, detect availability, and register helper SQL functions.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Keep JSON path building type-safe—no stray quotes or typos when drilling into
+              deeply nested structures.</li>
+            <li>Detect feature availability at runtime so you can gracefully fall back on builds
+              compiled without JSON1/FTS5.</li>
+            <li>Install deterministic helper functions exactly once per connection to keep SQL
+              migrations tidy.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-sql">SELECT json_extract(blob, '$.user.email') FROM events;</code></pre>
+          <pre><code class="language-cpp">auto path = sqlite::json::path().key("user").key("email");
+auto expr = sqlite::json::extract_expression("events.blob", path);
+
+sqlite::query q{db,
+    "SELECT " + expr + " AS email "
+    "FROM events "
+    "WHERE " + sqlite::fts::match_expression("events_fts") + " "
+    "ORDER BY fts_rank(matchinfo(events_fts)) DESC"
+};
+sqlite::json::register_contains_function(db);
+sqlite::fts::register_rank_function(db);</code></pre>
+          <p>
+            These helpers just spit out SQL strings, so you can drop them straight into migrations,
+            ORMs, or whatever query builder you already use.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2><a href="json_fts.html"><code>sqlite::json::path_builder</code></a></h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>path_builder()</code></td><td>Initializes the internal string with <code>"$"</code>.</td></tr>
+            <tr><td><code>path_builder&amp; key(std::string_view segment)</code></td><td>Appends <code>.segment</code> (quoting automatically when needed).</td></tr>
+            <tr><td><code>path_builder&amp; index(std::size_t idx)</code></td><td>Appends array access (<code>[idx]</code>).</td></tr>
+            <tr><td><code>std::string const&amp; str() const noexcept</code></td><td>Returns the accumulated JSON path.</td></tr>
+          </table>
+          <p><code>inline path_builder path()</code> returns a new builder rooted at <code>$</code>.</p>
+        </section>
+
+        <section class="doc-section">
+          <h2>JSON utilities</h2>
+          <table class="reference-table">
+            <tr><th>Function</th><th>Description</th></tr>
+            <tr><td><code>std::string extract_expression(std::string_view json_expr, path_builder const&amp; path)</code></td><td>Produces <code>"json_extract(json_expr, 'path')"</code> snippets.</td></tr>
+            <tr><td><code>std::string contains_expression(std::string_view json_expr, path_builder const&amp; path, std::string_view value_expr)</code></td><td>Returns an equality comparison between a JSON slot and <code>value_expr</code>.</td></tr>
+            <tr><td><code>bool json::available(connection&amp;)</code></td><td>Checks whether JSON1 is compiled into the current connection.</td></tr>
+            <tr><td><code>void json::register_contains_function(connection&amp;, std::string_view function_name = "json_contains_value")</code></td><td>Installs a deterministic scalar function that tests whether a JSON path equals the given value.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>FTS utilities</h2>
+          <table class="reference-table">
+            <tr><th>Function</th><th>Description</th></tr>
+            <tr><td><code>bool fts::available(connection&amp;)</code></td><td>Verifies that FTS5 APIs are present.</td></tr>
+            <tr><td><code>std::string fts::match_expression(std::string_view column_or_table, std::string_view query_expr = "?")</code></td><td>Generates <code>"column MATCH query"</code> fragments.</td></tr>
+            <tr><td><code>void fts::register_rank_function(connection&amp;, std::string_view function_name = "fts_rank")</code></td><td>Registers a simple ranking function that counts matched phrases.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/json_fts.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

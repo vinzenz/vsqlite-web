@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::connection | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::connection</h1>
+          <span>Database handle RAII wrapper</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            A <a href="connection.html"><code>sqlite::connection</code></a> is the one-stop RAII wrapper around a raw
+            <code>sqlite3*</code> handle. Opening or closing a database, checking the last inserted
+            rowid, attaching extra files, or tweaking the shared statement cache all flow through
+            this type. The wrapper enforces the project’s threading guideline: keep a connection
+            bound to a single thread unless you explicitly opt into <a href="connection_pool.html"><code>connection_pool</code></a>.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Guarantees the handle is closed in the destructor, even if you forget to call
+              <code>close</code>.</li>
+            <li>Implements the “open modes” (read-only, existing-only, create, always-create) so
+              failures are surfaced as rich <code>database_exception</code> variants.</li>
+            <li>Owns the LRU statement cache; higher-level helpers such as <code>query</code> and
+              <code>execute</code> reuse prepared statements by default.</li>
+            <li>Provides attach/detach utilities that mirror SQLite’s SQL primitives but still honor
+              filesystem adapters and error handling.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">sqlite::connection db{"/var/data/app.db",
+                        sqlite::open_mode::open_or_create};
+
+// Guarded by the destructor: transactions roll back when scope exits.
+sqlite::transaction tx{db, sqlite::transaction_type::immediate};
+
+sqlite::execute ddl{db, R\"SQL(
+    CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT)
+)SQL\", true};
+
+sqlite::execute upsert{db, "INSERT OR REPLACE INTO settings VALUES(?, ?)"};
+upsert % "timezone" % "UTC";
+upsert();
+
+tx.commit();</code></pre>
+          <p>
+            In tests I usually flip to <code>open_mode::always_create</code> and hand in a temp
+            filesystem adapter so every run starts from an empty file.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2><code>enum class open_mode</code></h2>
+          <ul class="list">
+            <li><code>open_readonly</code> &mdash; open an existing database for reads.</li>
+            <li><code>open_existing</code> &mdash; fail if the database is missing.</li>
+            <li><code>open_or_create</code> &mdash; create the database if it does not exist.</li>
+            <li><code>always_create</code> &mdash; remove any existing file before creating a new database.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Constructors &amp; basic operations</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>connection(std::string const&amp; db)</code></td><td>Opens or creates <code>db</code> using default flags.</td></tr>
+            <tr><td><code>connection(std::string const&amp; db, filesystem_adapter_ptr fs)</code></td><td>Injects a custom filesystem adapter.</td></tr>
+            <tr><td><code>connection(std::string const&amp; db, open_mode mode)</code></td><td>Opens the database with the desired behavior.</td></tr>
+            <tr><td><code>connection(std::string const&amp; db, open_mode mode, filesystem_adapter_ptr fs)</code></td><td>Combines both customizations.</td></tr>
+            <tr><td><code>connection(connection const&amp;)=delete</code>, <code>connection&amp; operator=(connection const&amp;)=delete</code></td><td>Connections cannot be copied.</td></tr>
+            <tr><td><code>~connection()</code></td><td>Closes the database handle.</td></tr>
+            <tr><td><code>void attach(std::string const&amp; db, std::string const&amp; alias)</code></td><td>Executes <code>ATTACH DATABASE</code>.</td></tr>
+            <tr><td><code>void detach(std::string const&amp; alias)</code></td><td>Executes <code>DETACH DATABASE</code>.</td></tr>
+            <tr><td><code>std::int64_t get_last_insert_rowid()</code></td><td>Returns <code>sqlite3_last_insert_rowid</code>.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Statement cache</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>void configure_statement_cache(statement_cache_config const&amp; cfg)</code></td><td>Adjusts capacity/enabled flags.</td></tr>
+            <tr><td><code>statement_cache_config statement_cache_settings() const</code></td><td>Returns current cache configuration.</td></tr>
+            <tr><td><code>void clear_statement_cache()</code></td><td>Flushes all cached statements.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/connection.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

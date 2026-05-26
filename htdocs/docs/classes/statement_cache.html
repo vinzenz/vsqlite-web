@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::statement_cache | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::statement_cache</h1>
+          <span>LRU cache for prepared statements</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Each connection owns a <code>statement_cache</code> that reuses <code>sqlite3_stmt*</code>
+            handles keyed by SQL text. This reduces parse/prepare overhead for frequently executed
+            statements.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>LRU eviction keeps the cache bounded while still prioritizing hot statements.</li>
+            <li>Disabling the cache is useful during schema migrations or debugging when you want
+              every statement to be re-prepared.</li>
+            <li>Internally thread-confined: each <code>connection</code> owns one cache, so no extra
+              locking is necessary.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2><code>statement_cache_config</code></h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>std::size_t capacity = 32</code></td><td>Number of statements stored before older entries are evicted.</td></tr>
+            <tr><td><code>bool enabled = true</code></td><td>Allows disabling caching entirely while keeping the structure.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">sqlite::connection db{"app.db"};
+db.configure_statement_cache({.capacity = 128, .enabled = true});
+
+sqlite::execute insert{db, "INSERT INTO events(payload) VALUES(?)"};
+for (auto const & payload : batch) {
+    insert % payload;
+    insert();
+}
+
+db.clear_statement_cache(); // finalize all statements before fork/exec</code></pre>
+          <p>
+            Most of the time <a href="query.html"><code>query</code></a> and
+            <a href="execute.html"><code>execute</code></a> touch the cache for you—I only tweak the
+            config when I know a workload reuses dozens of statements.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2><code>statement_cache</code></h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>explicit statement_cache(statement_cache_config cfg = {})</code></td><td>Constructs a cache with the given configuration.</td></tr>
+            <tr><td><code>sqlite3_stmt* acquire(sqlite3* db, std::string_view sql)</code></td><td>Returns a cached statement (or prepares a new one if absent).</td></tr>
+            <tr><td><code>void release(std::string_view sql, sqlite3_stmt* stmt)</code></td><td>Marks a statement as idle so it can be reused later.</td></tr>
+            <tr><td><code>void clear(sqlite3* db)</code></td><td>Finalizes all cached statements for <code>db</code>.</td></tr>
+            <tr><td><code>statement_cache_config config() const noexcept</code></td><td>Returns the current configuration.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/statement_cache.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

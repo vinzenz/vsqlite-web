@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>sqlite::result | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::result</h1>
+          <span>Forward-only cursor returned by sqlite::query</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Encapsulates the execution state of a prepared SELECT statement. The result keeps the
+            underlying statement alive via shared ownership so the cursor remains valid even if the
+            originating <code>query</code> goes out of scope.
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Designed for forward-only consumption; use <code>reset()</code> sparingly because it
+              rewinds the underlying statement and invalidates any spans.</li>
+            <li>Templated getters perform strict type conversion and throw descriptive exceptions
+              when SQLite’s storage class cannot be mapped to <code>T</code>.</li>
+            <li><code>variant_t</code> and tuple helpers make it easy to surface dynamic payloads in
+              scripting layers without writing manual switch statements.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Iteration</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>bool next_row()</code></td><td>Advances to the next row; returns <code>false</code> at the end.</td></tr>
+            <tr><td><code>bool end() const</code></td><td>Reports whether <code>next_row()</code> consumed the final row.</td></tr>
+            <tr><td><code>void reset()</code></td><td>Resets the cursor to the first row without rebinding parameters.</td></tr>
+            <tr><td><code>int get_changes()</code></td><td>Mirrors <code>sqlite3_changes()</code>; only meaningful for INSERT/UPDATE/DELETE statements. Run a <code>SELECT COUNT(*) ...</code> query to count result rows.</td></tr>
+            <tr><td><code>int get_column_count()</code></td><td>Number of columns exposed by the statement.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">auto cursor = sqlite::query{db,
+    "SELECT id, json_extract(blob, '$.state') FROM jobs ORDER BY id"
+}.get_result();
+
+while (cursor-&gt;next_row()) {
+    auto [id, state] = cursor-&gt;get_tuple&lt;std::int64_t, std::string&gt;();
+    if (cursor-&gt;is_null(1)) {
+        continue;
+    }
+    dispatch(id, state);
+}
+
+cursor-&gt;reset(); // rewind and reuse with new bindings if needed</code></pre>
+          <p>
+            Need zero-copy blob access? call <code>get_binary_span()</code> or
+            <code>get_variant()</code>, do your work, and copy the bytes before the next
+            <code>next_row()</code> call invalidates the view.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2>Column metadata</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>type get_column_type(int idx)</code></td><td>Returns the SQLite storage class for column <code>idx</code>.</td></tr>
+            <tr><td><code>std::string get_column_decltype(int idx)</code></td><td>Declared type from the schema.</td></tr>
+            <tr><td><code>std::string get_column_name(int idx)</code></td><td>Column name as compiled into the statement.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Templated extraction</h2>
+          <p>For scalars, strings, optionals, durations, and enums, prefer the templated getters:</p>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>template&lt;typename T&gt; T get(int idx)</code></td><td>Converts the column into arithmetic types, enums, <code>std::optional</code>, <code>std::chrono::duration</code>/<code>time_point</code>, strings, or byte containers.</td></tr>
+            <tr><td><code>template&lt;typename... Ts&gt; std::tuple&lt;Ts...&gt; get_tuple(int start_column = 0)</code></td><td>Reads consecutive columns into a tuple.</td></tr>
+            <tr><td><code>using result_type = std::shared_ptr&lt;result&gt;</code></td><td>Alias used by <a href="query.html"><code>sqlite::query</code></a>.</td></tr>
+          </table>
+          <p>Blob helpers remain available:</p>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>size_t get_binary_size(int idx)</code></td><td>Returns the blob size in bytes or 0 for NULL.</td></tr>
+            <tr><td><code>void get_binary(int idx, void* buf, size_t buf_size)</code></td><td>Copies blob data into a caller-provided buffer (throws if too small).</td></tr>
+            <tr><td><code>void get_binary(int idx, std::vector&lt;unsigned char&gt;&amp; vec)</code></td><td>Resizes <code>vec</code> and copies the blob.</td></tr>
+            <tr><td><code>std::span&lt;const unsigned char&gt; get_binary_span(int idx)</code></td><td>Returns a view over the blob memory.</td></tr>
+            <tr><td><code>bool is_null(int idx)</code></td><td>Checks whether the column equals SQL NULL.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/result.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>

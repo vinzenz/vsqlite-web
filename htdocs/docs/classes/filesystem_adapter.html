@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>filesystem_adapter | vsqlite++ Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="brand">
+          <h1>sqlite::filesystem_adapter</h1>
+          <span>Pluggable filesystem layer</span>
+        </div>
+        <nav class="site-nav">
+          <a href="../../">Overview</a>
+          <a class="active" href="../../docs/">Documentation</a>
+          <a href="../../community/">Community</a>
+          <a href="https://github.com/vinzenz/vsqlite--">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="doc-section">
+          <p>
+            Lets embedder code override how database files are probed and deleted. Pass an instance
+            to the <a href="connection.html"><code>sqlite::connection</code></a> constructor to intercept filesystem operations
+            (e.g., implementing a virtual FS or sandbox checks).
+          </p>
+          <h2>Use cases</h2>
+          <ul class="list">
+            <li>Use it to veto destructive opens: deny <code>open_mode::always_create</code> outside
+              a whitelist.</li>
+            <li>Bridge SQLite to non-standard storage (encrypted volumes, cloud buckets) by mapping
+              the DB path to your abstraction before SQLite touches the disk.</li>
+            <li>Return precise <code>std::error_code</code> values so callers can distinguish
+              between “file missing” and “permission denied”.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section">
+          <h2>Example usage</h2>
+          <pre><code class="language-cpp">class sandbox_fs : public sqlite::filesystem_adapter {
+public:
+    explicit sandbox_fs(std::filesystem::path root) : root_(std::move(root)) {}
+
+    filesystem_entry status(std::filesystem::path const & path) const override {
+        auto real = root_ / sanitize(path);
+        std::error_code ec;
+        auto stat = std::filesystem::symlink_status(real, ec);
+        if (!ec && !within_root(real)) {
+            ec = make_error_code(std::errc::permission_denied);
+        }
+        return {stat, ec};
+    }
+
+    bool remove(std::filesystem::path const & path, std::error_code & ec) const override {
+        auto real = root_ / sanitize(path);
+        if (!within_root(real)) {
+            ec = make_error_code(std::errc::permission_denied);
+            return false;
+        }
+        return std::filesystem::remove(real, ec);
+    }
+private:
+    // ...
+};
+
+sqlite::connection db{"tenant.db",
+                      sqlite::open_mode::open_or_create,
+                      std::make_shared&lt;sandbox_fs&gt;("/srv/tenants/acme")};</code></pre>
+          <p>
+            The adapter sits in a <code>shared_ptr</code>, so you can hand the same policy object to
+            every connection without worrying about lifetimes.
+          </p>
+        </section>
+
+        <section class="doc-section">
+          <h2>Types</h2>
+          <table class="reference-table">
+            <tr><th>Type</th><th>Description</th></tr>
+            <tr><td><code>struct filesystem_entry</code></td><td>Holds <code>std::filesystem::file_status status</code> and <code>std::error_code error</code> results.</td></tr>
+            <tr><td><code>struct filesystem_adapter</code></td><td>Abstract base with <code>status()</code> and <code>remove()</code> pure virtuals.</td></tr>
+            <tr><td><code>class default_filesystem_adapter</code></td><td>Concrete implementation that defers to <code>std::filesystem</code>.</td></tr>
+            <tr><td><code>using filesystem_adapter_ptr = std::shared_ptr&lt;filesystem_adapter&gt;</code></td><td>Shared pointer alias used by <code>connection</code>.</td></tr>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>Interface</h2>
+          <table class="reference-table">
+            <tr><th>Member</th><th>Description</th></tr>
+            <tr><td><code>virtual filesystem_entry status(std::filesystem::path const&amp; target) const = 0</code></td><td>Return file metadata plus an error code if the probe failed.</td></tr>
+            <tr><td><code>virtual bool remove(std::filesystem::path const&amp; target, std::error_code&amp; ec) const = 0</code></td><td>Attempt to remove <code>target</code>; set <code>ec</code> to describe failures.</td></tr>
+            <tr><td><code>filesystem_entry default_filesystem_adapter::status(...)</code></td><td>Calls <code>std::filesystem::symlink_status</code>.</td></tr>
+            <tr><td><code>bool default_filesystem_adapter::remove(...)</code></td><td>Calls <code>std::filesystem::remove</code>.</td></tr>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        Documentation for vsqlite++ 0.4.0 — header <code>include/sqlite/filesystem_adapter.hpp</code>.
+      </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </body>
+</html>
